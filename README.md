@@ -11,7 +11,6 @@ The architecture utilizes a distributed system: the Go2 handles internal state m
 To run this control station, your machine must meet the following requirements:
 * **Operating System:** Ubuntu 22.04 LTS
 * **Middleware:** ROS 2 Humble
-* **Network:** CycloneDDS (Configured for Wi-Fi discovery bridging with the Go2's internal ROS 2 Foxy system)
 
 ---
 
@@ -28,32 +27,9 @@ sudo apt install ros-humble-desktop
 ```
 
 ### Required Dependencies
-Install CycloneDDS and the necessary serial libraries for the ESP32 relay:
+Install the necessary serial libraries for the ESP32 hardware relay:
 ```bash
-sudo apt install ros-humble-rmw-cyclonedds-cpp
 pip install pyserial
-```
-
-### Network Configuration (Crucial)
-Because the Go2 uses an older DDS implementation, you must force your computer to strictly bind to your Wi-Fi interface to prevent dropped packets or `bad_alloc` crashes. 
-
-1. Create a `cyclonedds.xml` file in your home directory:
-```xml
-<?xml version="1.0" encoding="UTF-8" ?>
-<CycloneDDS xmlns="[https://cdds.io/config](https://cdds.io/config)" xmlns:xsi="[http://www.w3.org/2001/XMLSchema-instance](http://www.w3.org/2001/XMLSchema-instance)">
-    <Domain id="any">
-        <General>
-            <NetworkInterfaceAddress>YOUR_WIFI_INTERFACE_NAME</NetworkInterfaceAddress>
-        </General>
-    </Domain>
-</CycloneDDS>
-```
-2. Add these lines to your `~/.bashrc`:
-```bash
-export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-export CYCLONEDDS_URI=file:///home/$USER/cyclonedds.xml
-# Uncomment and set this if your Go2 is broadcasting on a specific channel:
-# export ROS_DOMAIN_ID=10 
 ```
 
 ---
