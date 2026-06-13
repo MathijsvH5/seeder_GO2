@@ -1,0 +1,330 @@
+#include <cmath>
+#include <iostream>
+#include <vector>
+#include <unistd.h>
+#include <queue>
+#include <stdio.h>
+#include <math.h> 
+
+// High Level Headers
+#include <unitree/robot/go2/sport/sport_client.hpp>
+#include <unitree/idl/go2/SportModeState_.hpp>
+
+// Low Level Headers
+#include <stdint.h>
+#include <unitree/robot/channel/channel_publisher.hpp>
+#include <unitree/robot/channel/channel_subscriber.hpp>
+#include <unitree/idl/go2/LowState_.hpp>
+#include <unitree/idl/go2/LowCmd_.hpp>
+#include <unitree/common/time/time_tool.hpp>
+#include <unitree/common/thread/thread.hpp>
+
+using namespace unitree::common;
+using namespace unitree::robot;
+
+#define TOPIC_HIGHSTATE "rt/sportmodestate"
+#define TOPIC_LOWCMD "rt/lowcmd"
+#define TOPIC_LOWSTATE "rt/lowstate"
+
+constexpr double PosStopF = (2.146E+9f);
+constexpr double VelStopF = (16000.0f);
+
+enum test_mode
+{
+  /*---Basic motion---*/
+  normal_stand,
+  balance_stand,
+  velocity_move,
+  poke_ground,
+  stand_straight,
+  stand_down,
+  stand_up,
+  damp,
+  recovery_stand,
+  /*---Special motion ---*/
+  sit,
+  rise_sit,
+  stop_move = 99
+};
+
+struct RobotStep {
+    test_mode mode;
+    double duration;
+    double vx = 0.0;
+    double vyaw = 0.0;
+    double pitch = 0.0;
+};
+
+// CRC32 calculation for LowCmd
+uint32_t crc32_core(uint32_t *ptr, uint32_t len)
+{
+    unsigned int xbit = 0;
+    unsigned int data = 0;
+    unsigned int CRC32 = 0xFFFFFFFF;
+    const unsigned int dwPolynomial = 0x04c11db7;
+    for (unsigned int i = 0; i < len; i++) {
+        xbit = 1 << 31;
+        data = ptr[i];
+        for (unsigned int bits = 0; bits < 32; bits++) {
+            if (CRC32 & 0x80000000) {
+                CRC32 <<= 1;
+                CRC32 ^= dwPolynomial;
+            } else {
+                CRC32 <<= 1;
+            }
+            if (data & xbit)
+                CRC32 ^= dwPolynomial;
+            xbit >>= 1;
+        }
+    }
+    return CRC32;
+}
+
+class Custom
+{
+public:
+  const double MOVE_SPEED = 0.6;    
+  const double SEED_DISTANCE = 2.0; 
+
+  bool keep_running = true;
+  int last_mode = -1;
+  std::queue<RobotStep> sequence;
+  double step_start_time = 0.0;
+  
+  // Timing and states
+  double ct = 0;
+  int flag = 0;
+  float dt = 0.002; // MUST be 0.002 (500Hz) for Low-Level control stability
+
+  float current_vx = 0.0;
+  float current_vyaw = 0.0;
+  float current_pitch = 0.0;
+
+  // Low Level Variables
+  double ll_running_time = 0.0;
+  double phase = 0.0;
+  double captured_stand_pos[12] = {0}; // Will store the exact pose when HL stops
+  
+  double lean_forward[12] = {
+      0.00571868, 0.548813, -1.91763, //FR
+     -0.00571868, 0.548813, -1.91763, //FL
+      0.00571868, 0.408813, -1.01763, //RR
+     -0.00571868, 0.408813, -1.01763  //RL
+  };
+  double lower_body_height[12] = {
+      0.00571868, 0.648813, -2.19375, 
+     -0.00571868, 0.648813, -2.19375, 
+      0.00571868, 0.508813, -1.24375, 
+     -0.00571868, 0.508813, -1.24375
+  };
+
+  unitree_go::msg::dds_::SportModeState_ high_state{};
+  unitree_go::msg::dds_::LowState_ low_state{};
+  unitree_go::msg::dds_::LowCmd_ low_cmd{};
+
+  unitree::robot::go2::SportClient sport_client;
+  ChannelSubscriberPtr<unitree_go::msg::dds_::SportModeState_> high_suber;
+  ChannelSubscriberPtr<unitree_go::msg::dds_::LowState_> low_suber;
+  ChannelPublisherPtr<unitree_go::msg::dds_::LowCmd_> low_puber;
+
+  Custom()
+  {
+    sport_client.SetTimeout(10.0f);
+    sport_client.Init();
+
+    double move_duration = SEED_DISTANCE / MOVE_SPEED;
+
+    // --- Sequence Definition ---
+    sequence.push({stand_up,      1.0});
+    sequence.push({balance_stand, 0.5});
+    
+    sequence.push({velocity_move, move_duration, MOVE_SPEED, 0.0, 0.0});
+    sequence.push({stop_move,     1.0});
+
+    // Poking sequence (Low Level)
+    sequence.push({poke_ground, 3.0}); // 3 seconds to execute poke
+    sequence.push({stand_straight, 3.0}); // 3 seconds to stand back up
+    
+    // Give HL a moment to catch its balance again
+    sequence.push({recovery_stand, 1.0}); 
+    sequence.push({balance_stand, 1.0});
+
+    sequence.push({velocity_move, move_duration, MOVE_SPEED, 0.0, 0.0});
+    sequence.push({stop_move,     1.0});
+
+    sequence.push({poke_ground, 3.0});
+    sequence.push({stand_straight, 3.0});
+    
+    sequence.push({recovery_stand, 1.0});
+
+    sequence.push({stand_down,    2.0});
+
+    // Initialize Channels
+    high_suber.reset(new ChannelSubscriber<unitree_go::msg::dds_::SportModeState_>(TOPIC_HIGHSTATE));
+    high_suber->InitChannel(std::bind(&Custom::HighStateHandler, this, std::placeholders::_1), 1);
+
+    low_suber.reset(new ChannelSubscriber<unitree_go::msg::dds_::LowState_>(TOPIC_LOWSTATE));
+    low_suber->InitChannel(std::bind(&Custom::LowStateHandler, this, std::placeholders::_1), 1);
+
+    low_puber.reset(new ChannelPublisher<unitree_go::msg::dds_::LowCmd_>(TOPIC_LOWCMD));
+    low_puber->InitChannel();
+  };
+
+  void InitLowCmd()
+  {
+      low_cmd.head()[0] = 0xFE;
+      low_cmd.head()[1] = 0xEF;
+      low_cmd.level_flag() = 0xFF;
+      low_cmd.gpio() = 0;
+      for (int i = 0; i < 20; i++)
+      {
+          low_cmd.motor_cmd()[i].mode() = 0x01; // servo mode
+          low_cmd.motor_cmd()[i].q() = PosStopF;
+          low_cmd.motor_cmd()[i].kp() = 0;
+          low_cmd.motor_cmd()[i].dq() = VelStopF;
+          low_cmd.motor_cmd()[i].kd() = 0;
+          low_cmd.motor_cmd()[i].tau() = 0;
+      }
+  }
+
+  void WriteLowCmd(double* target_q)
+  {
+      for (int i = 0; i < 12; i++) {
+          low_cmd.motor_cmd()[i].q() = target_q[i];
+          low_cmd.motor_cmd()[i].dq() = 0;
+          low_cmd.motor_cmd()[i].kp() = 50.0;
+          low_cmd.motor_cmd()[i].kd() = 3.5;
+          low_cmd.motor_cmd()[i].tau() = 0;
+      }
+      low_cmd.crc() = crc32_core((uint32_t *)&low_cmd, (sizeof(unitree_go::msg::dds_::LowCmd_) >> 2) - 1);
+      low_puber->Write(low_cmd);
+  }
+
+  void RobotControl()
+  {
+    ct += dt;
+
+    if (sequence.empty()) {
+        keep_running = false;
+        return;
+    }
+
+    RobotStep& current = sequence.front();
+    int TEST_MODE = current.mode;
+    current_vx = current.vx;
+    current_vyaw = current.vyaw;
+
+    double elapsed = ct - step_start_time;
+    if (elapsed >= current.duration) {
+        std::cout << "Time: " << ct << "s | Completed mode: " << TEST_MODE << std::endl;
+        sequence.pop();
+        step_start_time = ct;
+        last_mode = -1; // Reset last mode to force re-trigger on next step
+        
+        if (sequence.empty()) {
+            std::cout << "Sequence finished." << std::endl;
+            keep_running = false;
+            return;
+        }
+        return; // wait for next tick
+    }
+
+    // STATE MACHINE
+    switch (TEST_MODE)
+    {
+    case velocity_move: 
+      sport_client.Move(current_vx, 0, current_vyaw);
+      break;
+
+    case stop_move: 
+      sport_client.StopMove();
+      break;
+
+    case poke_ground:
+      if (TEST_MODE != last_mode) {
+          // WE JUST ENTERED THIS MODE. Do the hand-off!
+          sport_client.Damp(); // Tell HL to let go of the motors
+          InitLowCmd();        // Initialize LL command structure
+          ll_running_time = 0.0;
+          // Capture the exact current joint positions
+          for(int i=0; i<12; i++) {
+              captured_stand_pos[i] = low_state.motor_state()[i].q();
+          }
+      }
+      
+      ll_running_time += dt;
+      double current_target[12];
+
+      if (ll_running_time < 1.5) {
+          // Part 1: From standing to lean forward
+          phase = tanh(ll_running_time / 0.5); 
+          for (int i = 0; i < 12; i++) {
+              current_target[i] = phase * lean_forward[i] + (1 - phase) * captured_stand_pos[i];
+          }
+      } else {
+          // Part 2: From lean forward to lower body (the poke)
+          phase = tanh((ll_running_time - 1.5) / 0.5);
+          for (int i = 0; i < 12; i++) {
+              current_target[i] = phase * lower_body_height[i] + (1 - phase) * lean_forward[i];
+          }
+      }
+      WriteLowCmd(current_target);
+      break;
+
+    case stand_straight:
+      if (TEST_MODE != last_mode) {
+          ll_running_time = 0.0;
+      }
+      
+      ll_running_time += dt;
+      double recovery_target[12];
+      
+      // Interpolate from lower_body_height back to the originally captured stand position
+      phase = tanh(ll_running_time / 0.8);
+      for (int i = 0; i < 12; i++) {
+          recovery_target[i] = phase * captured_stand_pos[i] + (1 - phase) * lower_body_height[i];
+      }
+      WriteLowCmd(recovery_target);
+      break;
+
+    // Standard High Level fallbacks
+    case balance_stand: sport_client.BalanceStand(); break;
+    case stand_down: if(TEST_MODE!=last_mode) sport_client.StandDown(); break;
+    case stand_up: if(TEST_MODE!=last_mode) sport_client.StandUp(); break;
+    case recovery_stand: if(TEST_MODE!=last_mode) sport_client.RecoveryStand(); break;
+    default: sport_client.StopMove();
+    }
+
+    last_mode = TEST_MODE;
+  };
+
+  void HighStateHandler(const void *message) {
+    high_state = *(unitree_go::msg::dds_::SportModeState_ *)message;
+  };
+  
+  void LowStateHandler(const void *message) {
+    low_state = *(unitree_go::msg::dds_::LowState_ *)message;
+  };
+};
+
+int main(int argc, char **argv)
+{
+  if (argc < 2) {
+    std::cout << "Usage: " << argv[0] << " networkInterface (e.g., eth0 or wlan0)" << std::endl;
+    exit(-1);
+  }
+
+  ChannelFactory::Instance()->Init(0, argv[1]);
+  Custom custom;
+  sleep(1);
+
+  // Note: dt is now 0.002s (500Hz)
+  ThreadPtr threadPtr = CreateRecurrentThread(custom.dt * 1000000, std::bind(&Custom::RobotControl, &custom));
+
+  while (custom.keep_running) {
+    sleep(1);
+  }
+
+  std::cout << "Script sequence complete. Shutting down cleanly..." << std::endl;
+  return 0;
+}

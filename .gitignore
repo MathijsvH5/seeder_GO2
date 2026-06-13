@@ -1,0 +1,26 @@
+# --- ROS 2 (Colcon) Ignored Directories ---
+unitree_ws/build/
+unitree_ws/install/
+unitree_ws/log/
+
+# --- Unitree SDK (CMake) Ignored Directories ---
+unitree_sdk_ws/build/
+**/CMakeCache.txt
+**/CMakeFiles/
+**/Makefile
+**/cmake_install.cmake
+
+# --- Compiled Binaries & Executables ---
+*.so
+*.o
+*.a
+*.out
+
+# --- Python Cache ---
+__pycache__/
+*.pyc
+
+# --- System & OS Files ---
+.DS_Store
+Thumbs.db
+.vscode/

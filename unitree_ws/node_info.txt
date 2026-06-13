@@ -1,0 +1,32 @@
+/ocs2_quadruped_controller
+  Subscribers:
+    /cmd_vel: geometry_msgs/msg/Twist
+    /control_input: control_input_msgs/msg/Inputs
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+  Publishers:
+    /legged_robot/currentState: visualization_msgs/msg/MarkerArray
+    /legged_robot/desiredBaseTrajectory: visualization_msgs/msg/Marker
+    /legged_robot/desiredFeetTrajectory/LF: visualization_msgs/msg/Marker
+    /legged_robot/desiredFeetTrajectory/LH: visualization_msgs/msg/Marker
+    /legged_robot/desiredFeetTrajectory/RF: visualization_msgs/msg/Marker
+    /legged_robot/desiredFeetTrajectory/RH: visualization_msgs/msg/Marker
+    /legged_robot/optimizedStateTrajectory: visualization_msgs/msg/MarkerArray
+    /ocs2_quadruped_controller/transition_event: lifecycle_msgs/msg/TransitionEvent
+    /odom: nav_msgs/msg/Odometry
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+    /pose: geometry_msgs/msg/PoseWithCovarianceStamped
+    /rosout: rcl_interfaces/msg/Log
+    /tf: tf2_msgs/msg/TFMessage
+  Service Servers:
+    /ocs2_quadruped_controller/describe_parameters: rcl_interfaces/srv/DescribeParameters
+    /ocs2_quadruped_controller/get_parameter_types: rcl_interfaces/srv/GetParameterTypes
+    /ocs2_quadruped_controller/get_parameters: rcl_interfaces/srv/GetParameters
+    /ocs2_quadruped_controller/list_parameters: rcl_interfaces/srv/ListParameters
+    /ocs2_quadruped_controller/set_parameters: rcl_interfaces/srv/SetParameters
+    /ocs2_quadruped_controller/set_parameters_atomically: rcl_interfaces/srv/SetParametersAtomically
+  Service Clients:
+
+  Action Servers:
+
+  Action Clients:
+
