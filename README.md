@@ -49,26 +49,32 @@ This repository builds upon the official Unitree SDK and ROS 2 packages. For det
 
 Before running any commands, ensure the Go2 is powered on, connected to the same Wi-Fi network as your computer, and the ESP32 seeder mechanism is physically connected.
 
-**1. Source the environment:**
-Open a fresh terminal and source both ROS 2 and your local workspace:
+**1. Connect to the Robot:**
+Open a terminal and establish a wireless SSH connection to the Go2's internal computer:
+```bash
+ssh unitree@192.168.6.111
+```
+
+**2. Source the environment (On your local machine):**
+Open a fresh terminal on your laptop and source both ROS 2 and your local workspace:
 ```bash
 source /opt/ros/humble/setup.bash
 source ~/seeder_GO2/unitree_ws/install/setup.bash
 ```
 
-**2. Launch the High-Level ROS 2 Network (RViz/SLAM):**
+**3. Launch the High-Level ROS 2 Network (RViz/SLAM):**
+Launch the SLAM and localization nodes to begin mapping and tracking:
 ```bash
-# Example launch command (update with your specific launch file name)
-ros2 launch quadruped_ros2_control go2_mapping.launch.py
+ros2 launch unitree_ros2_example demo_localization_launch.py
 ```
 
-**3. Start the Hardware Relay:**
+**4. Start the Hardware Relay:**
 In a separate terminal, launch the Python script that listens to the ROS network and triggers the ESP32 over USB:
 ```bash
 python3 ~/seeder_GO2/scripts/seed_relay.py
 ```
 
-**4. Execute the Locomotion Sequence:**
+**5. Execute the Locomotion Sequence:**
 Finally, run the compiled C++ executable that commands the robot to walk to its target, assume the seeding posture, and fire the drop trigger.
 ```bash
 cd ~/seeder_GO2/unitree_sdk_ws/build
