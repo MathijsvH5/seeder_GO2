@@ -6,6 +6,12 @@ The architecture utilizes a distributed system: the Go2 handles internal state m
 
 ---
 
+## SLAM Demonstration
+
+<video src="media/slam_demo.mp4" width="100%" controls></video>
+
+---
+
 ## 1. Prerequisites
 
 To run this control station, your machine must meet the following requirements:
