@@ -8,7 +8,11 @@ The architecture utilizes a distributed system: the Go2 handles internal state m
 
 ## SLAM Demonstration
 
-<video src="media/slam_demo.mp4" width="100%" controls></video>
+
+
+https://github.com/user-attachments/assets/530b2dbc-0e13-4d11-ab9f-96f8a72e8ac6
+
+
 
 ---
 
