@@ -66,9 +66,31 @@ public:
     else if (ct < 4.0) {
         // 3. Bend forward (Smoothly over 3 seconds)
         TEST_MODE = pitch_control;
-        current_pitch = 0.75;
-        current_yaw = 0.6;
+        current_pitch = 0.2;
+        current_yaw = -0.45;
     } 
+    else if (ct < 6.0) {
+        // 3. Bend forward (Smoothly over 3 seconds)
+        TEST_MODE = pitch_control;
+        current_pitch = 0.0;
+        current_yaw = 0.0;
+    } 
+    else if (ct < 8.0) {
+        // 3. Bend forward (Smoothly over 3 seconds)
+        TEST_MODE = pitch_control;
+        current_pitch = 0.2;
+        current_yaw = 0.45;
+    } 
+    else if (ct < 10.0) {
+        // 3. Bend forward (Smoothly over 3 seconds)
+        TEST_MODE = pitch_control;
+        current_pitch = 0.0;
+        current_yaw = 0.0;
+    }
+    else if (ct < 12.0) {
+        // 3. Bend forward (Smoothly over 3 seconds)
+        TEST_MODE = stand_down;
+    }
    /* else if (ct < 4.0) {
         // 3. Bend forward (Smoothly over 3 seconds)
         TEST_MODE = height_control;

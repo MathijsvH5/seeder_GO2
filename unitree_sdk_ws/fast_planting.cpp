@@ -78,9 +78,11 @@ public:
         sequence.push({stop_move,     1.0}); 
 
         // Lean forward to plant seed
-        sequence.push({pitch_control, 1.0, 0.0, 0.0, 0.4, -0.6}); 
-        sequence.push({pitch_control, 1.0, 0.0, 0.0, 0.0, 0.0}); 
-        sequence.push({pitch_control, 1.0, 0.0, 0.0, 0.4, 0.6}); 
+        sequence.push({pitch_control, 1.0, 0.0, 0.0, 0.0, -0.45});
+        sequence.push({pitch_control, 2.0, 0.0, 0.0, 0.2, -0.45}); 
+        sequence.push({pitch_control, 3.0, 0.0, 0.0, 0.0, 0.0}); 
+        sequence.push({pitch_control, 1.0, 0.0, 0.0, 0.0, 0.45});
+        sequence.push({pitch_control, 2.0, 0.0, 0.0, 0.2, 0.45}); 
         sequence.push({pitch_control, 1.0, 0.0, 0.0, 0.0, 0.0}); 
     }
 
@@ -107,6 +109,7 @@ public:
     current_vx = current.vx; 
     current_vyaw = current.vyaw; 
     current_pitch = current.pitch; 
+    current_yaw = current.yaw;
 
     double elapsed = ct - step_start_time; 
     if (elapsed >= current.duration) { 
