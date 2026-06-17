@@ -20,8 +20,14 @@ https://github.com/user-attachments/assets/530b2dbc-0e13-4d11-ab9f-96f8a72e8ac6
 
 
 
-https://github.com/user-attachments/assets/28fbe363-78db-4be1-a4c3-47c8831a7b77
+https://github.com/user-attachments/assets/9d13696a-381d-4c14-8008-b0a63beb1950
 
+---
+
+## Experiment Trajectory Accuracy
+
+
+https://github.com/user-attachments/assets/28fbe363-78db-4be1-a4c3-47c8831a7b77
 
 
 ---
