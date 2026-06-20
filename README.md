@@ -73,6 +73,19 @@ This repository builds upon the official Unitree SDK and ROS 2 packages. For det
 
 *(Note: Ensure you build any custom ROS 2 packages within your Colcon workspace alongside the official Unitree packages).*
 
+Build the SDK:
+```bash
+cd ~/seeder_GO2/unitree_sdk_ws/build
+make
+```
+
+Build ROS 2 packages:
+```bash
+cd ~/seeder_GO2/unitree_ws
+colcon build
+source install/setup.bash
+```
+
 ---
 
 ## 4. Running the System
