@@ -104,8 +104,9 @@ python3 ~/seeder_GO2/scripts/seed_relay.py
 Finally, run the compiled C++ executable that commands the robot to walk to its target, assume the seeding posture, and fire the drop trigger.
 ```bash
 cd ~/seeder_GO2/unitree_sdk_ws/build
-./your_sequence_executable_name
+./fast_planting_no_esp eth0
 ```
+
 
 
 ---
@@ -165,8 +166,8 @@ ssh unitree@192.168.6.111
 **2. Execute the Sequence:**
 Navigate to the SDK build folder and run the `fast_planting` executable, binding it to the robot's internal `eth0` interface:
 ```bash
-cd ~/unitree_sdk_ws/build
-./fast_planting eth0
+cd ~/seeder_GO2/unitree_sdk_ws/build
+./fast_planting_no_esp eth0
 ```
 
 ---
