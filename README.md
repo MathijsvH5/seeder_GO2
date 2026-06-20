@@ -53,9 +53,13 @@ sudo apt install ros-humble-desktop
 ```
 
 ### Required Dependencies
-Install the necessary serial libraries for the ESP32 hardware relay:
+Install for SLAM:
 ```bash
-pip install pyserial
+sudo apt install ros-humble-slam-toolbox ros-humble-navigation2 ros-humble-nav2-bringup
+```
+Install for ESP32 USB connection:
+```bash
+sudo apt install ros-humble-serial
 ```
 
 ---
