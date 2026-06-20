@@ -59,3 +59,6 @@ target_link_libraries(remote_emulator unitree_sdk2)
 
 add_executable(fast_planting fast_planting.cpp)
 target_link_libraries(fast_planting unitree_sdk2)
+
+add_executable(fast_planting_no_esp fast_planting_no_esp.cpp)
+target_link_libraries(fast_planting_no_esp unitree_sdk2)
