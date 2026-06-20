@@ -106,3 +106,96 @@ Finally, run the compiled C++ executable that commands the robot to walk to its 
 cd ~/seeder_GO2/unitree_sdk_ws/build
 ./your_sequence_executable_name
 ```
+
+
+---
+
+## 1. Prerequisites
+
+To run this control station, your machine must meet the following requirements:
+* **Operating System:** Ubuntu 22.04 LTS
+* **Middleware:** ROS 2 Humble
+
+---
+
+## 2. Installation & Dependencies
+
+### ROS 2 Humble Setup
+If you do not have ROS 2 Humble installed, follow the official documentation or run:
+```bash
+sudo apt update && sudo apt install curl -y
+sudo curl -sSL [https://raw.githubusercontent.com/ros/rosdistro/master/ros.key](https://raw.githubusercontent.com/ros/rosdistro/master/ros.key) -o /usr/share/keyrings/ros-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] [http://packages.ros.org/ros2/ubuntu](http://packages.ros.org/ros2/ubuntu) $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
+sudo apt update
+sudo apt install ros-humble-desktop
+```
+
+### Required Dependencies
+Install the necessary serial libraries for the ESP32 hardware relay:
+```bash
+pip install pyserial
+```
+
+---
+
+## 3. Building the Workspaces
+
+This repository builds upon the official Unitree SDK and ROS 2 packages. For detailed installation, dependency management, and core build instructions for the base packages, please refer directly to the official Unitree repositories:
+
+* **Unitree SDK2:** [github.com/unitreerobotics/unitree_sdk2](https://github.com/unitreerobotics/unitree_sdk2)
+* **Unitree ROS2:** [github.com/unitreerobotics/unitree_ros2](https://github.com/unitreerobotics/unitree_ros2)
+
+*(Note: Ensure you build any custom ROS 2 packages within your Colcon workspace alongside the official Unitree packages).*
+
+---
+
+## 4. Running the System
+
+The system can be run in two different modes depending on your testing requirements. Before running either mode, ensure the Go2 is powered on.
+
+### Mode A: Standalone Planting Sequence (Wireless / SSH)
+If you only want to test the locomotion and planting sequence without SLAM mapping or the physical ESP32 trigger, you can run this entirely wirelessly directly on the robot's onboard computer.
+
+**1. Connect to the Robot:**
+Open a terminal and establish a wireless SSH connection:
+```bash
+ssh unitree@192.168.6.111
+```
+
+**2. Execute the Sequence:**
+Navigate to the SDK build folder and run the `fast_planting` executable, binding it to the robot's internal `eth0` interface:
+```bash
+cd ~/unitree_sdk_ws/build
+./fast_planting eth0
+```
+
+---
+
+### Mode B: Full System Integration (Cabled Connection Required)
+To run the full autonomous stack—including SLAM mapping and the physical ESP32 seed deployment—your computer must be physically tethered to the Go2 via Ethernet, and the ESP32 must be connected via USB.
+
+**1. Source the environment (On your tethered laptop):**
+Open a fresh terminal on your laptop and source both ROS 2 and your local workspace:
+```bash
+source /opt/ros/humble/setup.bash
+source ~/seeder_GO2/unitree_ws/install/setup.bash
+```
+
+**2. Launch the SLAM Network:**
+Launch the SLAM and localization nodes to begin mapping:
+```bash
+ros2 launch unitree_ros2_example demo_localization_launch.py
+```
+
+**3. Start the Hardware Relay:**
+In a separate terminal, launch the Python script that listens to the network and triggers the ESP32 over USB:
+```bash
+python3 ~/seeder_GO2/scripts/seed_relay.py
+```
+
+**4. Execute the Full Locomotion Sequence:**
+Finally, run the compiled C++ executable on your laptop to start the integrated sequence. *(Note: Replace `YOUR_ETHERNET_INTERFACE` with your actual cabled network interface name, such as `enp3s0`)*:
+```bash
+cd ~/seeder_GO2/unitree_sdk_ws/build
+./your_sequence_executable_name YOUR_ETHERNET_INTERFACE
+```
