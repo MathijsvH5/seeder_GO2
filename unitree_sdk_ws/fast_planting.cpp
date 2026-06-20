@@ -1,4 +1,4 @@
-/********************************************************************** Copyright (c) 2020-2023, Unitree Robotics.Co.Ltd. All rights reserved. 
+/********************************************************************** * Copyright (c) 2020-2023, Unitree Robotics.Co.Ltd. All rights reserved. 
  ***********************************************************************/
 
 #include <cmath> 
@@ -6,6 +6,15 @@
 #include <vector> 
 #include <unistd.h> 
 #include <queue>  
+
+// Bluetooth and Serial Headers
+#include <fcntl.h>    
+#include <errno.h>    
+#include <termios.h>  
+#include <unistd.h>   
+#include <string>
+#include <cstring>    
+#include <cerrno>     
 
 #include <unitree/robot/go2/sport/sport_client.hpp> 
 #include <unitree/robot/channel/channel_subscriber.hpp> 
@@ -31,7 +40,11 @@ enum test_mode
   sit, 
   rise_sit, 
   set_walk,
-  stop_move = 99 
+  stop_move = 99,
+  // ESP32 Integration
+  seeder_next = 100,
+  seeder_open = 101,
+  seeder_close = 102
 }; 
 
 // Define the structure for each action in our sequence 
@@ -49,7 +62,7 @@ class Custom
 public: 
   // Constants
   const double MOVE_SPEED = 0.6;    // 0.6 m/s  
-  const double SEED_DISTANCE = 1.5; // 3 meters between two seeds 
+  const double SEED_DISTANCE = 1.5;
 
   // Sequence control
   bool keep_running = true;  
@@ -57,15 +70,29 @@ public:
   std::queue<RobotStep> sequence; 
   double step_start_time = 0.0; 
 
+  int serial_port = -1; // Holds the file descriptor for Bluetooth
+
   Custom() 
   { 
+    // --- OPEN THE BLUETOOTH PORT ---
+    serial_port = open("/dev/rfcomm0", O_RDWR | O_NOCTTY | O_NDELAY);
+    if (serial_port < 0) {
+        std::cerr << "WARNING: Could not open /dev/rfcomm0. Is the ESP32 bound?" << std::endl;
+    } else {
+        std::cout << "Successfully connected to Bluetooth ESP32!" << std::endl;
+        
+        // Configure port for raw text output
+        struct termios tty;
+        tcgetattr(serial_port, &tty);
+        cfmakeraw(&tty);
+        tcsetattr(serial_port, TCSANOW, &tty);
+        tcflush(serial_port, TCIOFLUSH); // Clears the pipes
+    }
+
     sport_client.SetTimeout(10.0f); 
     sport_client.Init(); 
 
-    double move_duration = SEED_DISTANCE / MOVE_SPEED;   // Calculate the duration dynamically 
-
-    // Sequence for the robot dog 
-    // Format: {Mode, Duration (sec), VX, VYAW, Pitch} 
+    double move_duration = SEED_DISTANCE / MOVE_SPEED;   
 
     // Initial Wakeup & Stand 
     sequence.push({stand_up,      1.0}); 
@@ -74,16 +101,40 @@ public:
      
     for (int i = 0; i < 5; ++i) {
         // Walk to seed location
-        sequence.push({velocity_move, move_duration, MOVE_SPEED, 0.0, 0.0}); 
+        sequence.push({velocity_move, move_duration, MOVE_SPEED, 0.0, 0.0, 0.0}); 
         sequence.push({stop_move,     1.0}); 
 
-        // Lean forward to plant seed
+        // 1. Send 'NEXT' while in neutral stance
+        sequence.push({seeder_next,   1.0, 0.0, 0.0, 0.0, 0.0});
+
+        // Position 1: Lean forward and yaw left
         sequence.push({pitch_control, 1.0, 0.0, 0.0, 0.0, -0.45});
         sequence.push({pitch_control, 2.0, 0.0, 0.0, 0.2, -0.45}); 
-        sequence.push({pitch_control, 3.0, 0.0, 0.0, 0.0, 0.0}); 
+        
+        // 2. Open seeder (maintaining pitch 0.2 and yaw -0.45)
+        sequence.push({seeder_open,   1.5, 0.0, 0.0, 0.2, -0.45});
+
+        // Return to neutral stance
+        sequence.push({pitch_control, 2.0, 0.0, 0.0, 0.0, 0.0}); 
+
+        // 3. Send CLOSE then NEXT while in neutral stance
+        sequence.push({seeder_close,  1.0, 0.0, 0.0, 0.0, 0.0});
+        sequence.push({seeder_next,   1.0, 0.0, 0.0, 0.0, 0.0});
+
+        // Position 2: Lean forward and yaw right
         sequence.push({pitch_control, 1.0, 0.0, 0.0, 0.0, 0.45});
         sequence.push({pitch_control, 2.0, 0.0, 0.0, 0.2, 0.45}); 
-        sequence.push({pitch_control, 1.0, 0.0, 0.0, 0.0, 0.0}); 
+
+        // 4. Open seeder (maintaining pitch 0.2 and yaw 0.45)
+        sequence.push({seeder_open,   1.5, 0.0, 0.0, 0.2, 0.45});
+
+        // Return to neutral stance
+        sequence.push({pitch_control, 2.0, 0.0, 0.0, 0.0, 0.0}); 
+
+        // 5. Send CLOSE before moving on
+        sequence.push({seeder_close,  1.0, 0.0, 0.0, 0.0, 0.0});
+
+        sequence.push({set_walk,      0.5});
     }
 
     // Finish and shut down 
@@ -93,6 +144,32 @@ public:
     suber.reset(new unitree::robot::ChannelSubscriber<unitree_go::msg::dds_::SportModeState_>(TOPIC_HIGHSTATE)); 
     suber->InitChannel(std::bind(&Custom::HighStateHandler, this, std::placeholders::_1), 1); 
   }; 
+
+  ~Custom() {
+      if (serial_port >= 0) {
+          close(serial_port);
+      }
+  }
+
+  void SendMessageToESP32(const std::string& msg) {
+      if (serial_port < 0) {
+          std::cerr << "Cannot send '" << msg << "' - Bluetooth not connected." << std::endl;
+          return;
+      }
+      
+      // 1. Throw away any pending messages from the ESP32
+      char trash_buffer[256];
+      read(serial_port, trash_buffer, sizeof(trash_buffer)); 
+      
+      // 2. Send the new message
+      std::string payload = msg + "\n"; 
+      int bytes_written = write(serial_port, payload.c_str(), payload.length());
+      
+      if (bytes_written < 0) {
+          std::cerr << "Failed to write to Bluetooth port." << std::endl;
+      }
+  }
+
 
   void RobotControl() 
   { 
@@ -148,11 +225,38 @@ public:
       sport_client.BalanceStand(); 
       break; 
 
-
     case height_control: 
       sport_client.Euler(0, 0, 0);              
       sport_client.BalanceStand(); 
       break; 
+
+    // --- ESP32 Seeder Commands ---
+    case seeder_next:
+      sport_client.Euler(0, current_pitch, current_yaw); 
+      sport_client.BalanceStand();
+      if (TEST_MODE != last_mode) {
+          std::cout << ">>> SENDING 'NEXT' TO ESP32 <<<" << std::endl;
+          SendMessageToESP32("NEXT"); 
+      }
+      break;
+
+    case seeder_open:
+      sport_client.Euler(0, current_pitch, current_yaw); 
+      sport_client.BalanceStand();
+      if (TEST_MODE != last_mode) {
+          std::cout << ">>> SENDING 'OPEN' TO ESP32 <<<" << std::endl;
+          SendMessageToESP32("OPEN"); 
+      }
+      break;
+
+    case seeder_close:
+      sport_client.Euler(0, current_pitch, current_yaw); 
+      sport_client.BalanceStand();
+      if (TEST_MODE != last_mode) {
+          std::cout << ">>> SENDING 'CLOSE' TO ESP32 <<<" << std::endl;
+          SendMessageToESP32("CLOSE"); 
+      }
+      break;
 
     case stand_down:  
       if (TEST_MODE != last_mode) sport_client.StandDown(); 
@@ -184,7 +288,7 @@ public:
 
     case set_walk:
       if (TEST_MODE != last_mode) {
-          sport_client.FreeWalk(); // Or ClassicWalk(true)
+          sport_client.FreeWalk(); 
       }
       break;
 
