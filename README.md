@@ -96,7 +96,7 @@ The system can be run in two different modes depending on your testing requireme
 If you only want to test the locomotion and planting sequence without SLAM mapping or the physical ESP32 trigger, you can run this entirely wirelessly directly on the robot's onboard computer.
 
 **1. Connect to the Robot:**
-Open a terminal and establish a wireless SSH connection:
+Open a terminal and establish a wireless SSH connection (code: 123):
 ```bash
 ssh unitree@192.168.6.111
 ```
