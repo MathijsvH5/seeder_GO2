@@ -79,10 +79,12 @@ public:
 
         // Lean forward to plant seed
         sequence.push({pitch_control, 1.0, 0.0, 0.0, 0.0, -0.45});
-        sequence.push({pitch_control, 2.0, 0.0, 0.0, 0.2, -0.45}); 
+        sequence.push({pitch_control, 2.0, 0.0, 0.0, 0.7, -0.45}); 
+        sequence.push({pitch_control, 1.0, 0.0, 0.0, 0.0, -0.45}); 
         sequence.push({pitch_control, 3.0, 0.0, 0.0, 0.0, 0.0}); 
         sequence.push({pitch_control, 1.0, 0.0, 0.0, 0.0, 0.45});
-        sequence.push({pitch_control, 2.0, 0.0, 0.0, 0.2, 0.45}); 
+        sequence.push({pitch_control, 2.0, 0.0, 0.0, 0.7, 0.45}); 
+        sequence.push({pitch_control, 1.0, 0.0, 0.0, 0.0, 0.45}); 
         sequence.push({pitch_control, 1.0, 0.0, 0.0, 0.0, 0.0}); 
     }
 
