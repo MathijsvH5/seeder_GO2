@@ -35,3 +35,9 @@ target_link_libraries(fast_planting unitree_sdk2)
 
 add_executable(fast_planting_no_esp fast_planting_no_esp.cpp)
 target_link_libraries(fast_planting_no_esp unitree_sdk2)
+
+add_executable(esp_sequence esp_sequence.cpp)
+target_link_libraries(esp_sequence unitree_sdk2)
+
+add_executable(full_planting_sequence full_planting_sequence.cpp)
+target_link_libraries(full_planting_sequence unitree_sdk2)
