@@ -6,6 +6,17 @@ The architecture utilizes a distributed system: the Go2 handles internal state m
 
 ---
 
+## Sequence Demonstration
+
+
+
+
+https://github.com/user-attachments/assets/5b2d24d2-538c-429e-8b9e-0b174992381e
+
+
+
+---
+
 ## SLAM Demonstration
 
 
@@ -15,12 +26,11 @@ https://github.com/user-attachments/assets/530b2dbc-0e13-4d11-ab9f-96f8a72e8ac6
 
 
 ---
-
-## Sequence Demonstration
-
+## ESP Integration
 
 
-https://github.com/user-attachments/assets/9d13696a-381d-4c14-8008-b0a63beb1950
+https://github.com/user-attachments/assets/cc7a4cf0-7fa4-4940-b55c-951b79f66c7d
+
 
 ---
 
@@ -123,6 +133,7 @@ source ~/seeder_GO2/unitree_ws/install/setup.bash
 **2. Start the Hardware Relay:**
 In a separate terminal, launch the script that connects the esp to the laptop via bluetooth:
 ```bash
+cd ~/seeder_GO2/unitree_sdk_ws
 ./connect_dog.sh
 ```
 
