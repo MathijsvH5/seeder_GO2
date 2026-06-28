@@ -97,46 +97,50 @@ public:
     double move_duration = SEED_DISTANCE / MOVE_SPEED;   
 
     // Initial Wakeup & Stand 
-    sequence.push({stand_up,      3.5}); // Safe stand up duration!
+    sequence.push({stand_up,      2.5}); // Safe stand up duration!
     sequence.push({balance_stand, 0.5}); 
     sequence.push({set_walk,      0.5});
      
-    // Walk to seed location
-    sequence.push({velocity_move, move_duration, MOVE_SPEED, 0.0, 0.0, 0.0}); 
-    sequence.push({stop_move,     1.0}); 
+    for (int i = 0; i < 2; ++i) {
+      // Walk to seed location
+      sequence.push({velocity_move, move_duration, MOVE_SPEED, 0.0, 0.0, 0.0}); 
+      sequence.push({stop_move,     1.0}); 
 
-    // 1. Send 'NEXT' while in neutral stance
-    sequence.push({seeder_next,   1.0, 0.0, 0.0, 0.0, 0.0});
+      // 1. Send 'NEXT' while in neutral stance
+      sequence.push({seeder_next,   1.0, 0.0, 0.0, 0.0, 0.0});
 
-    // Position 1: Lean forward and yaw left
-    sequence.push({pitch_control, 1.0, 0.0, 0.0, 0.0, -0.45});
-    sequence.push({pitch_control, 2.0, 0.0, 0.0, 0.2, -0.45}); 
-    
-    // 2. Open seeder (maintaining pitch 0.2 and yaw -0.45)
-    sequence.push({seeder_open,   1.5, 0.0, 0.0, 0.2, -0.45});
+      // Position 1: Lean forward and yaw left
+      sequence.push({pitch_control, 0.5, 0.0, 0.0, 0.0, -0.45});
+      sequence.push({pitch_control, 1.0, 0.0, 0.0, 0.2, -0.45}); 
+      
+      // 2. Open seeder (maintaining pitch 0.2 and yaw -0.45)
+      sequence.push({seeder_open,   1.0, 0.0, 0.0, 0.2, -0.45});
 
-    // Return to neutral stance
-    sequence.push({pitch_control, 2.0, 0.0, 0.0, 0.0, 0.0}); 
+      // Return to neutral stance
+      sequence.push({pitch_control, 1.0, 0.0, 0.0, 0.0, 0.0}); 
 
-    // 3. Send CLOSE then NEXT while in neutral stance
-    sequence.push({seeder_close,  1.0, 0.0, 0.0, 0.0, 0.0});
-    sequence.push({seeder_next,   1.0, 0.0, 0.0, 0.0, 0.0});
+      // 3. Send CLOSE then NEXT while in neutral stance
+      sequence.push({seeder_close,  1.0, 0.0, 0.0, 0.0, 0.0});
+      sequence.push({seeder_next,   1.0, 0.0, 0.0, 0.0, 0.0});
 
-    // Position 2: Lean forward and yaw right
-    sequence.push({pitch_control, 1.0, 0.0, 0.0, 0.0, 0.45});
-    sequence.push({pitch_control, 2.0, 0.0, 0.0, 0.2, 0.45}); 
+      // Position 2: Lean forward and yaw right
+      sequence.push({pitch_control, 0.5, 0.0, 0.0, 0.0, 0.45});
+      sequence.push({pitch_control, 1.0, 0.0, 0.0, 0.2, 0.45}); 
 
-    // 4. Open seeder (maintaining pitch 0.2 and yaw 0.45)
-    sequence.push({seeder_open,   1.5, 0.0, 0.0, 0.2, 0.45});
+      // 4. Open seeder (maintaining pitch 0.2 and yaw 0.45)
+      sequence.push({seeder_open,   1.0, 0.0, 0.0, 0.2, 0.45});
 
-    // Return to neutral stance
-    sequence.push({pitch_control, 2.0, 0.0, 0.0, 0.0, 0.0}); 
+      // Return to neutral stance
+      sequence.push({pitch_control, 1.0, 0.0, 0.0, 0.0, 0.0}); 
 
-    // 5. Send CLOSE before moving on
-    sequence.push({seeder_close,  1.0, 0.0, 0.0, 0.0, 0.0});
+      // 5. Send CLOSE before moving on
+      sequence.push({seeder_close,  1.0, 0.0, 0.0, 0.0, 0.0});
+      
+      sequence.push({set_walk,      0.5});
+    }
 
     // Finish and keep standing
-    sequence.push({balance_stand, 2.0}); 
+    sequence.push({stand_up, 3.5}); 
 
     // Initialize subscriber for robot state 
     suber.reset(new unitree::robot::ChannelSubscriber<unitree_go::msg::dds_::SportModeState_>(TOPIC_HIGHSTATE)); 
